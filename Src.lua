@@ -403,7 +403,7 @@ function FlurioreLib:MakeGui(GuiConfig)
 	DropShadowHolder.BackgroundTransparency = 1
 	DropShadowHolder.BorderSizePixel = 0
 	DropShadowHolder.Position = UDim2.new(0, 100, 0, 100)
-	DropShadowHolder.Size = UDim2.new(0, 455, 0, 350)
+	DropShadowHolder.Size = UDim2.new(0, 800, 0, 350)
 	DropShadowHolder.ZIndex = 0
 	DropShadowHolder.Name = "DropShadowHolder"
 	DropShadowHolder.Parent = HirimiGui
@@ -693,7 +693,7 @@ function FlurioreLib:MakeGui(GuiConfig)
 			end
 		end
 	end)
-	DropShadowHolder.Size = UDim2.new(0, 115 + TextLabel.TextBounds.X + 1 + TextLabel1.TextBounds.X, 0, 350)
+	DropShadowHolder.Size = UDim2.new(0, math.max(800, 115 + TextLabel.TextBounds.X + 1 + TextLabel1.TextBounds.X), 0, 350)
 	MakeDraggable(Top, DropShadowHolder)
 	--// Blur
 	local MoreBlur = Instance.new("Frame");
