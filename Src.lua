@@ -48,12 +48,8 @@ local function MakeDraggable(topbarobject, object)
 		local DragInput = nil
 		local DragStart = nil
 		local StartSize = nil
-		local maxSizeX = object.Size.X.Offset
-		if maxSizeX < 400 then
-			maxSizeX = 400
-		end
-		local maxSizeY = maxSizeX - 100
-		object.Size = UDim2.new(0, maxSizeX, 0, maxSizeY)
+		local minSizeX = math.max(300, object.Size.X.Offset)
+		local minSizeY = math.max(260, object.Size.Y.Offset)
 		local changesizeobject = Instance.new("Frame");
 
 		changesizeobject.AnchorPoint = Vector2.new(1, 1)
@@ -70,8 +66,8 @@ local function MakeDraggable(topbarobject, object)
 			local Delta = input.Position - DragStart
 			local newWidth = StartSize.X.Offset + Delta.X
 			local newHeight = StartSize.Y.Offset + Delta.Y
-			newWidth = math.max(newWidth, maxSizeX)
-			newHeight = math.max(newHeight, maxSizeY)
+			newWidth = math.max(newWidth, minSizeX)
+			newHeight = math.max(newHeight, minSizeY)
 			local Tween = TweenService:Create(object, TweenInfo.new(0.2), {Size = UDim2.new(0, newWidth, 0, newHeight)})
 			Tween:Play()
 		end
@@ -137,6 +133,28 @@ function CircleClick(Button, X, Y)
 		end
 		Circle:Destroy()
 	end)
+end
+
+local function GetResponsiveGuiSize()
+	local viewport = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
+	local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+	local margin = isMobile and 16 or 80
+	local maxWidth = isMobile and 760 or 1000
+	local maxHeight = 560
+	local minWidth = isMobile and 320 or 720
+	local minHeight = isMobile and 300 or 360
+	local width = math.clamp(viewport.X - margin, minWidth, maxWidth)
+	local height = math.clamp(viewport.Y - margin, minHeight, maxHeight)
+
+	return UDim2.new(0, width, 0, height)
+end
+
+local function GetResponsiveGuiPosition(size)
+	local viewport = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
+	local x = math.max(8, (viewport.X - size.X.Offset) / 2)
+	local y = math.max(8, (viewport.Y - size.Y.Offset) / 2)
+
+	return UDim2.new(0, x, 0, y)
 end
 
 local FlurioreLib = {}
@@ -402,8 +420,8 @@ function FlurioreLib:MakeGui(GuiConfig)
 
 	DropShadowHolder.BackgroundTransparency = 1
 	DropShadowHolder.BorderSizePixel = 0
-	DropShadowHolder.Position = UDim2.new(0, 100, 0, 100)
-	DropShadowHolder.Size = UDim2.new(0, 800, 0, 350)
+	DropShadowHolder.Size = GetResponsiveGuiSize()
+	DropShadowHolder.Position = GetResponsiveGuiPosition(DropShadowHolder.Size)
 	DropShadowHolder.ZIndex = 0
 	DropShadowHolder.Name = "DropShadowHolder"
 	DropShadowHolder.Parent = HirimiGui
@@ -658,16 +676,19 @@ function FlurioreLib:MakeGui(GuiConfig)
 	end
 	local OldPos = DropShadowHolder.Position
 	local OldSize = DropShadowHolder.Size
+	local IsMaximized = false
 	MaxRestore.MouseButton1Down:Connect(function()
 		CircleClick(MaxRestore, Mouse.X, Mouse.Y)
 		if ImageLabel.Image == "rbxassetid://9886659406" then
 			ImageLabel.Image = "rbxassetid://9886659001"
+			IsMaximized = true
 			OldPos = DropShadowHolder.Position
 			OldSize = DropShadowHolder.Size
 			TweenService:Create(DropShadowHolder, TweenInfo.new(0.3), {Position = UDim2.new(0, 0, 0, 0)}):Play()
 			TweenService:Create(DropShadowHolder, TweenInfo.new(0.3), {Size = UDim2.new(1, 0, 1, 0)}):Play()
 		else
 			ImageLabel.Image = "rbxassetid://9886659406"
+			IsMaximized = false
 			TweenService:Create(DropShadowHolder, TweenInfo.new(0.3), {Position = OldPos}):Play()
 			TweenService:Create(DropShadowHolder, TweenInfo.new(0.3), {Size = OldSize}):Play()
 		end
@@ -693,7 +714,19 @@ function FlurioreLib:MakeGui(GuiConfig)
 			end
 		end
 	end)
-	DropShadowHolder.Size = UDim2.new(0, math.max(800, 115 + TextLabel.TextBounds.X + 1 + TextLabel1.TextBounds.X), 0, 350)
+	local ResponsiveGuiSize = GetResponsiveGuiSize()
+	local HeaderWidth = 115 + TextLabel.TextBounds.X + 1 + TextLabel1.TextBounds.X
+	DropShadowHolder.Size = UDim2.new(0, math.max(ResponsiveGuiSize.X.Offset, HeaderWidth), 0, ResponsiveGuiSize.Y.Offset)
+	DropShadowHolder.Position = GetResponsiveGuiPosition(DropShadowHolder.Size)
+	if workspace.CurrentCamera then
+		workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(function()
+			if not IsMaximized then
+				ResponsiveGuiSize = GetResponsiveGuiSize()
+				DropShadowHolder.Size = UDim2.new(0, math.max(ResponsiveGuiSize.X.Offset, HeaderWidth), 0, ResponsiveGuiSize.Y.Offset)
+				DropShadowHolder.Position = GetResponsiveGuiPosition(DropShadowHolder.Size)
+			end
+		end)
+	end
 	MakeDraggable(Top, DropShadowHolder)
 	--// Blur
 	local MoreBlur = Instance.new("Frame");
