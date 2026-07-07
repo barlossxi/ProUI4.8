@@ -935,9 +935,15 @@ local function AttachFolderMethods(folder)
 
     function folder:SetOpen(value)
         folder.Open = value == true
-        folder.Content.Visible = folder.Open
+        folder.Content.Visible = true
         folder.Arrow.Text = folder.Open and "-" or "+"
         folder:Update()
+
+        task.defer(function()
+            if folder.Root.Parent then
+                folder:Update()
+            end
+        end)
     end
 
     function folder:Toggle()
@@ -1529,7 +1535,7 @@ function Wally:CreateWindow(config, legacyName)
             BackgroundTransparency = 1,
             Position = UDim2.fromOffset(5, 39),
             Size = UDim2.new(1, -10, 0, 0),
-            Visible = folderOpen,
+            Visible = true,
             Parent = folderRoot,
         })
 
@@ -1552,9 +1558,19 @@ function Wally:CreateWindow(config, legacyName)
 
         AttachFolderMethods(folder)
 
-        AddSignal(folderArrow.MouseButton1Click:Connect(function()
+        local lastFolderToggle = 0
+        local function ToggleFolder()
+            local now = os.clock()
+            if now - lastFolderToggle < 0.05 then
+                return
+            end
+
+            lastFolderToggle = now
             folder:Toggle()
-        end))
+        end
+
+        AddSignal(folderHeader.MouseButton1Click:Connect(ToggleFolder))
+        AddSignal(folderArrow.MouseButton1Click:Connect(ToggleFolder))
 
         AddSignal(layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
             folder:Update()
