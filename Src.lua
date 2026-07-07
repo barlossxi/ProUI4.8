@@ -84,9 +84,9 @@ Wally.GlobalSignals = {}
 Wally.UnloadEnabled = true
 Wally.Count = 0
 Wally.Scales = {
-    Compact = UDim2.fromOffset(190, 0),
-    PC = UDim2.fromOffset(210, 0),
-    Mobile = UDim2.fromOffset(245, 0),
+    Compact = UDim2.fromOffset(260, 0),
+    PC = UDim2.fromOffset(420, 0),
+    Mobile = UDim2.fromOffset(320, 0),
 }
 
 local DefaultTween = TweenInfo.new(0.16, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
@@ -1294,7 +1294,7 @@ function Wally:CreateWindow(config, legacyName)
         Keybind = config.Keybind or "RightControl",
         Open = true,
         Visible = true,
-        Width = GetWidth(config.Size, UserInputService.TouchEnabled and 245 or 210),
+        Width = GetWidth(config.Size, UserInputService.TouchEnabled and 320 or 420),
         Folders = {},
     }
 
@@ -1472,6 +1472,7 @@ function Wally:CreateWindow(config, legacyName)
 
     function window:CreateFolder(folderConfig)
         folderConfig = NormalizeControlConfig(folderConfig, "Folder")
+        local folderOpen = folderConfig.Open == true or folderConfig.DefaultOpen == true
 
         local folderRoot = New("Frame", {
             BackgroundTransparency = 1,
@@ -1497,7 +1498,7 @@ function Wally:CreateWindow(config, legacyName)
             BackgroundTransparency = 1,
             Font = Enum.Font.SourceSansBold,
             Position = UDim2.fromOffset(9, 0),
-            Size = UDim2.new(1, -36, 1, 0),
+            Size = UDim2.new(1, -54, 1, 0),
             Text = folderConfig.Name,
             TextColor3 = Theme.Text,
             TextSize = 18,
@@ -1506,22 +1507,29 @@ function Wally:CreateWindow(config, legacyName)
             Parent = folderHeader,
         })
 
-        local folderArrow = New("TextLabel", {
+        local folderArrow = New("TextButton", {
             AnchorPoint = Vector2.new(1, 0),
-            BackgroundTransparency = 1,
+            AutoButtonColor = false,
+            BackgroundColor3 = Theme.Tertiary,
+            BackgroundTransparency = 0.15,
+            BorderSizePixel = 0,
             Font = Enum.Font.SourceSansBold,
-            Position = UDim2.new(1, -10, 0, 0),
-            Size = UDim2.fromOffset(18, 35),
-            Text = "-",
+            Position = UDim2.new(1, -7, 0, 5),
+            Size = UDim2.fromOffset(30, 25),
+            Text = folderOpen and "-" or "+",
             TextColor3 = Theme.Muted,
             TextSize = 20,
             Parent = folderHeader,
         })
 
+        Corner(folderArrow, 5)
+        Stroke(folderArrow, Color3.fromRGB(50, 50, 50), 0.55)
+
         local content = New("Frame", {
             BackgroundTransparency = 1,
             Position = UDim2.fromOffset(5, 39),
             Size = UDim2.new(1, -10, 0, 0),
+            Visible = folderOpen,
             Parent = folderRoot,
         })
 
@@ -1539,12 +1547,12 @@ function Wally:CreateWindow(config, legacyName)
             Arrow = folderArrow,
             Content = content,
             Layout = layout,
-            Open = true,
+            Open = folderOpen,
         }
 
         AttachFolderMethods(folder)
 
-        AddSignal(folderHeader.MouseButton1Click:Connect(function()
+        AddSignal(folderArrow.MouseButton1Click:Connect(function()
             folder:Toggle()
         end))
 
