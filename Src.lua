@@ -946,9 +946,11 @@ local function AttachFolderMethods(folder)
         end)
     end
 
-    function folder:Toggle()
+    function folder:ToggleOpen()
         folder:SetOpen(not folder.Open)
     end
+
+    folder.ToggleCollapse = folder.ToggleOpen
 
     function folder:AddLabel(name)
         local root, title = CreateItem(folder, name, 32)
@@ -1566,7 +1568,7 @@ function Wally:CreateWindow(config, legacyName)
             end
 
             lastFolderToggle = now
-            folder:Toggle()
+            folder:SetOpen(not folder.Open)
         end
 
         AddSignal(folderHeader.MouseButton1Click:Connect(ToggleFolder))
