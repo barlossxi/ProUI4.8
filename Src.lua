@@ -824,7 +824,7 @@ local function CreateDropdownInRow(row, title, folder, config)
                     BorderSizePixel = 0,
                     Font = Enum.Font.SourceSansSemibold,
                     Size = UDim2.new(1, 0, 0, 24),
-                    Text = (multi and ((selected and "[x] ") or "[ ] ") or "") .. valueText,
+                    Text = valueText,
                     TextColor3 = selected and Color3.fromRGB(20, 20, 20) or Theme.SubText,
                     TextSize = 15,
                     TextXAlignment = Enum.TextXAlignment.Left,
@@ -832,7 +832,21 @@ local function CreateDropdownInRow(row, title, folder, config)
                 })
 
                 Corner(option, 4)
-                Padding(option, 8, 0, 8, 0)
+                Padding(option, 8, 0, 24, 0)
+
+                if selected then
+                    New("TextLabel", {
+                        AnchorPoint = Vector2.new(1, 0.5),
+                        BackgroundTransparency = 1,
+                        Font = Enum.Font.SourceSansBold,
+                        Position = UDim2.new(1, -8, 0.5, 0),
+                        Size = UDim2.fromOffset(12, 12),
+                        Text = "✓",
+                        TextColor3 = Color3.fromRGB(20, 20, 20),
+                        TextSize = 14,
+                        Parent = option,
+                    })
+                end
 
                 AddSignal(option.MouseButton1Click:Connect(function()
                     if multi then
