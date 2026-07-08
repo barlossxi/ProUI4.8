@@ -673,6 +673,8 @@ end
 local function CreateDropdownInRow(row, title, folder, config)
     local values = config.Values or config.values or {}
     local multi = config.Multi == true
+    local searchEnabled = config.Search ~= false
+    local maxListHeight = tonumber(config.DropdownHeight or config.MaxHeight or config.ListHeight) or 144
     local opened = false
     local control = {
         Values = values,
@@ -690,24 +692,79 @@ local function CreateDropdownInRow(row, title, folder, config)
         Text = "",
         TextColor3 = Theme.SubText,
         TextSize = 15,
+        TextXAlignment = Enum.TextXAlignment.Left,
         TextTruncate = Enum.TextTruncate.AtEnd,
         Parent = row,
     })
 
     Corner(button, 4)
+    Padding(button, 8, 0, 22, 0)
+
+    local arrow = New("TextLabel", {
+        AnchorPoint = Vector2.new(1, 0.5),
+        BackgroundTransparency = 1,
+        Font = Enum.Font.SourceSansBold,
+        Position = UDim2.new(1, -7, 0.5, 0),
+        Size = UDim2.fromOffset(14, 14),
+        Text = "v",
+        TextColor3 = Theme.Muted,
+        TextSize = 14,
+        Parent = row,
+    })
 
     local optionFrame = New("Frame", {
-        BackgroundTransparency = 1,
+        BackgroundColor3 = Theme.Secondary,
+        BorderSizePixel = 0,
         Position = UDim2.fromOffset(7, 33),
         Size = UDim2.new(1, -14, 0, 0),
         Visible = false,
         Parent = row,
     })
 
+    Corner(optionFrame, 5)
+    Stroke(optionFrame, Color3.fromRGB(42, 42, 42), 0.35)
+
+    local searchBox
+    if searchEnabled then
+        searchBox = New("TextBox", {
+            BackgroundColor3 = Color3.fromRGB(52, 52, 52),
+            BorderSizePixel = 0,
+            ClearTextOnFocus = false,
+            Font = Enum.Font.SourceSansSemibold,
+            PlaceholderColor3 = Theme.Muted,
+            PlaceholderText = config.SearchPlaceholder or "Search...",
+            Position = UDim2.fromOffset(7, 7),
+            Size = UDim2.new(1, -14, 0, 24),
+            Text = "",
+            TextColor3 = Theme.Text,
+            TextSize = 15,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            Parent = optionFrame,
+        })
+
+        Corner(searchBox, 4)
+        Stroke(searchBox, Color3.fromRGB(60, 60, 60), 0.4)
+        Padding(searchBox, 8, 0, 8, 0)
+    end
+
+    local optionScroll = New("ScrollingFrame", {
+        Active = true,
+        AutomaticCanvasSize = Enum.AutomaticSize.None,
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        CanvasSize = UDim2.new(0, 0, 0, 0),
+        Position = UDim2.fromOffset(7, searchEnabled and 37 or 7),
+        ScrollBarImageColor3 = Theme.Accent,
+        ScrollBarThickness = 4,
+        ScrollingDirection = Enum.ScrollingDirection.Y,
+        Size = UDim2.new(1, -14, 0, 0),
+        Parent = optionFrame,
+    })
+
     local optionLayout = New("UIListLayout", {
         SortOrder = Enum.SortOrder.LayoutOrder,
         Padding = UDim.new(0, 3),
-        Parent = optionFrame,
+        Parent = optionScroll,
     })
 
     local function GetDisplay()
@@ -723,52 +780,93 @@ local function CreateDropdownInRow(row, title, folder, config)
         return table.concat(selected, ", ")
     end
 
+    local function GetSearchQuery()
+        if not searchBox then
+            return ""
+        end
+
+        return string.lower(tostring(searchBox.Text or ""))
+    end
+
     local function UpdateHeight()
-        local height = opened and (32 + optionLayout.AbsoluteContentSize.Y + 7) or 32
+        local listHeight = math.min(optionLayout.AbsoluteContentSize.Y, maxListHeight)
+        local topHeight = searchEnabled and 37 or 7
+        local frameHeight = topHeight + listHeight + 7
+        local height = opened and (32 + frameHeight + 7) or 32
         row.Size = UDim2.new(1, 0, 0, height)
-        optionFrame.Size = UDim2.new(1, -14, 0, optionLayout.AbsoluteContentSize.Y)
+        optionFrame.Size = UDim2.new(1, -14, 0, frameHeight)
+        optionScroll.Size = UDim2.new(1, -14, 0, listHeight)
+        optionScroll.CanvasSize = UDim2.new(0, 0, 0, optionLayout.AbsoluteContentSize.Y)
         optionFrame.Visible = opened
+        arrow.Text = opened and "^" or "v"
         folder:Update()
     end
 
     local function Refresh()
         button.Text = GetDisplay()
 
-        for _, child in next, optionFrame:GetChildren() do
+        for _, child in next, optionScroll:GetChildren() do
             if child:IsA("GuiObject") then
                 child:Destroy()
             end
         end
 
+        local query = GetSearchQuery()
+        local visibleCount = 0
+
         for _, value in next, control.Values do
             local valueText = tostring(value)
-            local selected = multi and control.Value[valueText] == true or control.Value == value
+            if query == "" or string.find(string.lower(valueText), query, 1, true) then
+                local selected = multi and control.Value[valueText] == true or control.Value == value
+                local option = New("TextButton", {
+                    AutoButtonColor = false,
+                    BackgroundColor3 = selected and Theme.Accent or Color3.fromRGB(46, 46, 46),
+                    BorderSizePixel = 0,
+                    Font = Enum.Font.SourceSansSemibold,
+                    Size = UDim2.new(1, 0, 0, 24),
+                    Text = (multi and ((selected and "[x] ") or "[ ] ") or "") .. valueText,
+                    TextColor3 = selected and Color3.fromRGB(20, 20, 20) or Theme.SubText,
+                    TextSize = 15,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    Parent = optionScroll,
+                })
+
+                Corner(option, 4)
+                Padding(option, 8, 0, 8, 0)
+
+                AddSignal(option.MouseButton1Click:Connect(function()
+                    if multi then
+                        control.Value[valueText] = not control.Value[valueText]
+                    else
+                        control.Value = value
+                        opened = false
+                    end
+
+                    Refresh()
+                    UpdateHeight()
+                    SafeCall(config.Callback, control:GetValue())
+                end))
+
+                visibleCount = visibleCount + 1
+            end
+        end
+
+        if visibleCount == 0 then
             local option = New("TextButton", {
                 AutoButtonColor = false,
-                BackgroundColor3 = selected and Theme.Accent or Color3.fromRGB(46, 46, 46),
+                BackgroundColor3 = Color3.fromRGB(46, 46, 46),
                 BorderSizePixel = 0,
                 Font = Enum.Font.SourceSansSemibold,
                 Size = UDim2.new(1, 0, 0, 24),
-                Text = (multi and ((selected and "[x] ") or "[ ] ") or "") .. valueText,
-                TextColor3 = selected and Color3.fromRGB(20, 20, 20) or Theme.SubText,
+                Text = "No results",
+                TextColor3 = Theme.Muted,
                 TextSize = 15,
-                Parent = optionFrame,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                Parent = optionScroll,
             })
 
             Corner(option, 4)
-
-            AddSignal(option.MouseButton1Click:Connect(function()
-                if multi then
-                    control.Value[valueText] = not control.Value[valueText]
-                else
-                    control.Value = value
-                    opened = false
-                end
-
-                Refresh()
-                UpdateHeight()
-                SafeCall(config.Callback, control:GetValue())
-            end))
+            Padding(option, 8, 0, 8, 0)
         end
 
         task.defer(UpdateHeight)
@@ -797,6 +895,14 @@ local function CreateDropdownInRow(row, title, folder, config)
         Refresh()
         UpdateHeight()
     end))
+
+    if searchBox then
+        AddSignal(searchBox:GetPropertyChangedSignal("Text"):Connect(function()
+            optionScroll.CanvasPosition = Vector2.new(0, 0)
+            Refresh()
+            UpdateHeight()
+        end))
+    end
 
     AddSignal(optionLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(UpdateHeight))
 
@@ -1303,6 +1409,7 @@ function Wally:CreateWindow(config, legacyName)
         Open = true,
         Visible = true,
         Width = GetWidth(config.Size, UserInputService.TouchEnabled and 320 or 420),
+        MaxBodyHeight = tonumber(config.MaxBodyHeight or config.BodyHeight or config.MaxTabHeight) or (UserInputService.TouchEnabled and 280 or 360),
         Folders = {},
     }
 
@@ -1366,9 +1473,16 @@ function Wally:CreateWindow(config, legacyName)
         Parent = header,
     })
 
-    local body = New("Frame", {
+    local body = New("ScrollingFrame", {
+        Active = true,
+        AutomaticCanvasSize = Enum.AutomaticSize.None,
         BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        CanvasSize = UDim2.new(0, 0, 0, 0),
         Position = UDim2.fromOffset(0, 36),
+        ScrollBarImageColor3 = Theme.Accent,
+        ScrollBarThickness = 0,
+        ScrollingDirection = Enum.ScrollingDirection.Y,
         Size = UDim2.new(1, 0, 0, 0),
         Parent = root,
     })
@@ -1391,12 +1505,15 @@ function Wally:CreateWindow(config, legacyName)
 
     function window:Update()
         local contentHeight = bodyLayout.AbsoluteContentSize.Y + 10
-        body.Size = UDim2.new(1, 0, 0, contentHeight)
+        local visibleHeight = math.min(contentHeight, window.MaxBodyHeight)
+        body.Size = UDim2.new(1, 0, 0, visibleHeight)
+        body.CanvasSize = UDim2.new(0, 0, 0, contentHeight)
+        body.ScrollBarThickness = contentHeight > window.MaxBodyHeight and 4 or 0
 
         if window.Open then
             body.Visible = true
             Tween(root, {
-                Size = UDim2.fromOffset(window.Width, 36 + contentHeight),
+                Size = UDim2.fromOffset(window.Width, 36 + visibleHeight),
             }, FastTween)
         else
             Tween(root, {
